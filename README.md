@@ -18,6 +18,10 @@
 - 智能判断工作日：
   - 如果节日/节气是非工作日（周六、周日或法定节假日），会在前一个工作日发送邮件
   - 自动识别法定节假日和补班安排，确保在正确的工作日发送邮件
+- 月度日程表预计算：
+  - 在每月初自动计算本月所有需要发送邮件的日期
+  - 将计算结果保存到文件中，避免重复计算
+  - 支持强制重新生成月度日程表
 - 使用OpenAI API生成节日/节气相关的邮件内容
 - 自动发送邮件给配置的收件人列表
 - 支持强制发送模式和测试模式
@@ -103,14 +107,21 @@ python main.py --use-sample
 python main.py --use-sample --force --test
 ```
 
+### 强制重新生成月度日程表
+```bash
+python main.py --regenerate-schedule
+```
+
 ## 项目结构
 - `main.py`: 主程序入口
 - `data_fetcher.py`: 数据获取模块
 - `date_checker.py`: 日期检查模块
 - `content_generator.py`: 内容生成模块
 - `email_sender.py`: 邮件发送模块
+- `schedule_manager.py`: 月度日程表管理模块
 - `config.json`: 配置文件
 - `data/`: 存储节日和节气数据的目录
+  - `monthly_schedule.json`: 月度邮件发送日程表
 
 
 ## 配置文件说明

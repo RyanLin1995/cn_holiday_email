@@ -9,6 +9,7 @@ build/
 *.egg-info/
 
 # Virtual environments
+.venv/
 venv/
 env/
 ENV/
@@ -27,3 +28,4 @@ posters/
 
 # Test data
 test_data/
+test.py

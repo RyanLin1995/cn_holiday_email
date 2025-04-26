@@ -46,29 +46,23 @@ class DataFetcher:
 
     @staticmethod
     def _is_file_for_year(file_path, year):
-        """检查JSON文件是否包含指定年份的数据。
+        """检查文件的创建时间是否与指定年份匹配。
 
         参数:
-            file_path (str): JSON文件路径
+            file_path (str): 文件路径
             year (int): 要检查的年份
 
         返回:
-            bool: 如果文件包含该年份的数据返回True，否则返回False
+            bool: 如果文件创建年份与指定年份匹配返回True，否则返回False
         """
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-
-                # 检查数据中是否有任何日期与年份匹配
-                if "data" in data:
-                    for item in data["data"]:
-                        if "time" in item and str(year) in item["time"]:
-                            return True
-                        if "date" in item and str(year) in item["date"]:
-                            return True
-                        if "start" in item and str(year) in item["start"]:
-                            return True
-            return False
+            # 获取文件的创建时间
+            file_creation_time = os.path.getctime(file_path)
+            # 转换为datetime对象
+            creation_date = datetime.fromtimestamp(file_creation_time)
+            # 提取年份并比较
+            file_year = creation_date.year
+            return file_year == year
         except Exception:
             return False
 
@@ -120,7 +114,14 @@ class DataFetcher:
 
         # 检查是否已经有指定年份的数据
         jieqi_file = os.path.join(self.data_dir, f"jieqi_{year}.json")
-        if os.path.exists(jieqi_file) and self._is_file_for_year(jieqi_file, year):
+        
+        # 删除旧年份的数据文件或者年份不匹配的文件
+        if os.path.exists(jieqi_file) and not self._is_file_for_year(jieqi_file, year):
+            os.remove(jieqi_file)
+            print(f"删除过期的节气数据文件: {jieqi_file}")
+        
+        # 如果文件存在且年份正确，直接读取
+        if os.path.exists(jieqi_file):
             with open(jieqi_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 data = self._convert_pinyin_to_chinese(data)
@@ -172,7 +173,14 @@ class DataFetcher:
 
         # 检查是否已经有指定年份的数据
         holiday_file = os.path.join(self.data_dir, f"holiday_{year}.json")
-        if os.path.exists(holiday_file) and self._is_file_for_year(holiday_file, year):
+        
+        # 删除旧年份的数据文件或者年份不匹配的文件
+        if os.path.exists(holiday_file) and not self._is_file_for_year(holiday_file, year):
+            os.remove(holiday_file)
+            print(f"删除过期的节假日数据文件: {holiday_file}")
+        
+        # 如果文件存在且年份正确，直接读取
+        if os.path.exists(holiday_file):
             with open(holiday_file, 'r', encoding='utf-8') as f:
                 return json.load(f)
 

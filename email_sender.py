@@ -6,14 +6,14 @@ import logging
 
 class EmailSender:
     def __init__(self, smtp_server, smtp_port, username, password, sender_name="AI节日邮件"):
-        """Initialize the EmailSender with SMTP server details.
+        """初始化邮件发送器，设置SMTP服务器详细信息。
 
-        Args:
-            smtp_server (str): SMTP server address
-            smtp_port (int): SMTP server port
-            username (str): SMTP username
-            password (str): SMTP password
-            sender_name (str): Sender name to display in emails
+        参数:
+            smtp_server (str): SMTP服务器地址
+            smtp_port (int): SMTP服务器端口
+            username (str): SMTP用户名
+            password (str): SMTP密码
+            sender_name (str): 显示的发件人名称
         """
         self.smtp_server = smtp_server
         self.smtp_port = smtp_port
@@ -21,7 +21,7 @@ class EmailSender:
         self.password = password
         self.sender_name = sender_name
 
-        # Setup logging
+        # 设置日志记录
         logging.basicConfig(
             level=logging.INFO,
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -33,23 +33,23 @@ class EmailSender:
         self.logger = logging.getLogger("EmailSender")
 
     def send_email(self, recipients, subject, body, poster_path=None):
-        """Send an email to the specified recipients.
+        """向指定收件人发送邮件。
 
-        Args:
-            recipients (list): List of recipient email addresses
-            subject (str): Email subject
-            body (str): Email body (HTML format)
-            poster_path (str, optional): Path to the poster image to attach
+        参数:
+            recipients (list): 收件人邮箱地址列表
+            subject (str): 邮件主题
+            body (str): 邮件正文（HTML格式）
+            poster_path (str, optional): 海报图片路径（可选）
 
-        Returns:
-            bool: True if email was sent successfully, False otherwise
+        返回:
+            bool: 发送成功返回True，否则返回False
         """
         try:
             msg = MIMEMultipart()
             msg['From'] = formataddr((self.sender_name, self.username))
             msg['Subject'] = subject
 
-            # Add HTML body
+            # 添加HTML正文
             # 预处理需要替换的内容
             body_html = body.replace('\n', '<br>')
 
@@ -76,10 +76,7 @@ class EmailSender:
             """
             msg.attach(MIMEText(html_body, 'html'))
 
-            # 海报功能已移除
-            # 忽略poster_path参数
-
-            # Connect to SMTP server and send email
+            # 连接SMTP服务器并发送邮件
             with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
                 server.starttls()
                 server.login(self.username, self.password)
@@ -87,10 +84,10 @@ class EmailSender:
                 for recipient in recipients:
                     msg['To'] = recipient
                     server.sendmail(self.username, recipient, msg.as_string())
-                    self.logger.info(f"Email sent to {recipient}")
+                    self.logger.info(f"邮件已发送至 {recipient}")
 
             return True
 
         except Exception as e:
-            self.logger.error(f"Failed to send email: {str(e)}")
+            self.logger.error(f"邮件发送失败：{str(e)}")
             return False

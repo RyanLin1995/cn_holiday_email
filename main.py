@@ -59,7 +59,6 @@ def create_default_config(config_path="config.json"):
             "base_url": "",  # 可选，从环境变量中读取
             "model": "gpt-3.5-turbo"  # 可选，从环境变量中读取
         },
-        "check_days_ahead": 1
     }
 
     with open(config_path, 'w', encoding='utf-8') as f:

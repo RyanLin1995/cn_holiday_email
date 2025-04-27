@@ -48,7 +48,8 @@ def create_default_config(config_path="config.json"):
             "smtp_port": 587,
             "username": "your_email@example.com",
             "password": "your_password",
-            "sender_name": "公司文化部"
+            "sender_name": "公司文化部",
+            "use_ssl": true
         },
         "recipients": [
             "all-employees@company.com",
@@ -176,7 +177,8 @@ def main():
                     smtp_port=config["email"]["smtp_port"],
                     username=config["email"]["username"],
                     password=config["email"]["password"],
-                    sender_name=config["email"]["sender_name"]
+                    sender_name=config["email"]["sender_name"],
+                    ssl=config["email"].get("use_ssl", True)
                 )
 
                 # 发送邮件

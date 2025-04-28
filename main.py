@@ -49,7 +49,7 @@ def create_default_config(config_path="config.json"):
             "username": "your_email@example.com",
             "password": "your_password",
             "sender_name": "公司文化部",
-            "use_ssl": true
+            "use_ssl": True
         },
         "recipients": [
             "all-employees@company.com",
@@ -95,12 +95,9 @@ def main():
         logger.info("配置加载成功")
 
         # 从配置和环境变量获取OpenAI设置
-        # openai_api_key = os.environ.get("OPENAI_API_KEY") or config["openai"].get("api_key", "")
-        # openai_base_url = os.environ.get("OPENAI_API_BASE") or config["openai"].get("base_url", "")
-        # openai_model = os.environ.get("OPENAI_API_MODEL") or config["openai"].get("model", "")
-        openai_api_key = config["openai"].get("api_key", "")
-        openai_base_url = config["openai"].get("base_url", "")
-        openai_model = config["openai"].get("model", "")
+        openai_api_key = os.environ.get("OPENAI_API_KEY") or config["openai"].get("api_key", "")
+        openai_base_url = os.environ.get("OPENAI_API_BASE") or config["openai"].get("base_url", "")
+        openai_model = os.environ.get("OPENAI_API_MODEL") or config["openai"].get("model", "")
 
         # 初始化数据目录
         data_dir = "data"

@@ -50,8 +50,18 @@ class EmailSender:
         msg['Subject'] = subject
 
         # 添加HTML正文
-        # 预处理需要替换的内容
+        # 预处理需要替换的内容，包括markdown格式转换
+        # 处理markdown格式：加粗、斜体、列表等
         body_html = body.replace('\n', '<br>')
+        # 处理加粗文本 **text** -> <strong>text</strong>
+        import re
+        body_html = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', body_html)
+        # 处理斜体文本 *text* -> <em>text</em>
+        body_html = re.sub(r'\*(.*?)\*', r'<em>\1</em>', body_html)
+        # 处理无序列表项 - item -> <li>item</li>
+        body_html = re.sub(r'<br>- (.*?)<br>', r'<br><li>\1</li><br>', body_html)
+        # 处理有序列表项 1. item -> <li>item</li>
+        body_html = re.sub(r'<br>\d+\. (.*?)<br>', r'<br><li>\1</li><br>', body_html)
 
         html_body = f"""
         <html>
@@ -79,27 +89,31 @@ class EmailSender:
         # 连接SMTP服务器并发送邮件
         self.logger.info(f"正在连接SMTP服务器 {self.smtp_server}:{self.smtp_port}...")
         try:
+            # 简化连接方式，统一处理SSL和非SSL连接
             if self.use_ssl:
-                with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port) as server:
-                    self.logger.info("使用SSL连接SMTP服务器成功，正在进行身份验证...")
-                    server.login(self.username, self.password)
-                    self.logger.info("身份验证成功，开始发送邮件...")
+                server = smtplib.SMTP_SSL(self.smtp_server, self.smtp_port)
+                self.logger.info("使用SSL连接SMTP服务器成功，正在进行身份验证...")
             else:
-                with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
-                    self.logger.info("使用非SSL连接SMTP服务器成功，正在进行身份验证...")
-                    server.starttls()  # 启用TLS加密
-                    server.login(self.username, self.password)
-                    self.logger.info("身份验证成功，开始发送邮件...")
-
-                for recipient in recipients:
-                    msg['To'] = recipient
-                    try:
-                        server.sendmail(self.username, recipient, msg.as_string())
-                        self.logger.info(f"邮件已成功发送至 {recipient}")
-                    except smtplib.SMTPException as se:
-                        self.logger.error(f"发送邮件至 {recipient} 时出错：{str(se)}")
-                        raise
-
+                server = smtplib.SMTP(self.smtp_server, self.smtp_port)
+                server.starttls()  # 启用TLS加密
+                self.logger.info("使用TLS连接SMTP服务器成功，正在进行身份验证...")
+            
+            # 登录
+            server.login(self.username, self.password)
+            self.logger.info("身份验证成功，开始发送邮件...")
+            
+            # 发送邮件给所有收件人
+            for recipient in recipients:
+                msg['To'] = recipient
+                try:
+                    server.sendmail(self.username, recipient, msg.as_string())
+                    self.logger.info(f"邮件已成功发送至 {recipient}")
+                except smtplib.SMTPException as se:
+                    self.logger.error(f"发送邮件至 {recipient} 时出错：{str(se)}")
+                    raise
+            
+            # 关闭连接
+            server.quit()
             self.logger.info("所有邮件发送完成")
             return True
 

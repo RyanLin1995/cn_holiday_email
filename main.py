@@ -95,9 +95,12 @@ def main():
         logger.info("配置加载成功")
 
         # 从配置和环境变量获取OpenAI设置
-        openai_api_key = os.environ.get("OPENAI_API_KEY") or config["openai"].get("api_key", "")
-        openai_base_url = os.environ.get("OPENAI_API_BASE") or config["openai"].get("base_url", "")
-        openai_model = os.environ.get("OPENAI_API_MODEL") or config["openai"].get("model", "")
+        # openai_api_key = os.environ.get("OPENAI_API_KEY") or config["openai"].get("api_key", "")
+        # openai_base_url = os.environ.get("OPENAI_API_BASE") or config["openai"].get("base_url", "")
+        # openai_model = os.environ.get("OPENAI_API_MODEL") or config["openai"].get("model", "")
+        openai_api_key = config["openai"].get("api_key", "")
+        openai_base_url = config["openai"].get("base_url", "")
+        openai_model = config["openai"].get("model", "")
 
         # 初始化数据目录
         data_dir = "data"
@@ -150,10 +153,16 @@ def main():
         should_send, special_date_type, special_date_info = schedule_manager.should_send_email_today()
 
         if should_send or args.force:
+            # 如果强制发送但今天不是特殊日期，则查找最近的特殊日期
             if not special_date_type and args.force:
-                # 如果强制发送但今天不是特殊日期，则不发送邮件
-                logger.error("今天不是特殊日期，无法强制发送邮件")
-                return
+                logger.info("强制发送模式：查找最近的特殊日期")
+                # 获取最近的特殊日期
+                special_date_type, special_date_info = schedule_manager.get_nearest_special_date()
+                if not special_date_type:
+                    logger.error("无法找到最近的特殊日期，无法发送邮件")
+                    return
+                logger.info(f"找到最近的{special_date_type}：{special_date_info.get('name')}")
+
             
             # 获取原始日期和节日名称
             today = datetime.now().strftime("%Y-%m-%d")
@@ -185,8 +194,7 @@ def main():
                 success = email_sender.send_email(
                     recipients=config["recipients"],
                     subject=email_content["subject"],
-                    body=email_content["body"],
-                    poster_path=None  # 不再使用海报
+                    body=email_content["body"]
                 )
 
                 if success:

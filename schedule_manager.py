@@ -252,3 +252,39 @@ class ScheduleManager:
             return True, special_date_entry["type"], special_date_entry["info"]
         
         return False, None, None
+        
+    def get_nearest_special_date(self):
+        """获取最近的特殊日期（节日或节气）。
+        
+        返回:
+            tuple: (special_date_type, special_date_info)
+                  special_date_type: 特殊日期类型（"holiday", "jieqi", 或 None）
+                  special_date_info: 特殊日期信息
+        """
+        today = datetime.now().date()
+        today_str = today.strftime("%Y-%m-%d")
+        
+        # 获取日程表
+        schedule = self.load_monthly_schedule()
+        
+        # 如果今天有特殊日期，直接返回
+        if today_str in schedule and schedule[today_str]:
+            special_date_entry = schedule[today_str][0]
+            return special_date_entry["type"], special_date_entry["info"]
+        
+        # 查找未来最近的特殊日期
+        future_dates = [date for date in schedule.keys() if date > today_str]
+        if future_dates:
+            nearest_future = min(future_dates)  # 获取最近的未来日期
+            special_date_entry = schedule[nearest_future][0]
+            return special_date_entry["type"], special_date_entry["info"]
+        
+        # 如果没有未来的特殊日期，查找过去最近的特殊日期
+        past_dates = [date for date in schedule.keys() if date < today_str]
+        if past_dates:
+            nearest_past = max(past_dates)  # 获取最近的过去日期
+            special_date_entry = schedule[nearest_past][0]
+            return special_date_entry["type"], special_date_entry["info"]
+        
+        # 如果没有找到任何特殊日期，返回None
+        return None, None

@@ -2,12 +2,11 @@ import os
 import argparse
 import logging
 import json
-import shutil
-from datetime import datetime
-from data_fetcher import DataFetcher
 from content_generator import ContentGenerator
+from data_fetcher import date_fetch_main
 from email_sender import EmailSender
-from schedule_manager import ScheduleManager
+from schedule_manager import should_send_email_today
+
 
 def setup_logging():
     """设置日志配置。"""
@@ -56,9 +55,10 @@ def create_default_config(config_path="config.json"):
             "staff@company.com"
         ],
         "openai": {
-            "api_key": "",  # 从环境变量中读取
+            "api_key": "",  # 可选，或从环境变量中读取
             "base_url": "",  # 可选，从环境变量中读取
-            "model": "gpt-3.5-turbo"  # 可选，从环境变量中读取
+            "email_model": "gpt-3.5-turbo",  # 可选，从环境变量中读取
+            "date_model": "Qwen/Qwen3-Coder-30B-A3B-Instruct"  # 可选，从环境变量中读取
         },
     }
 
@@ -95,85 +95,46 @@ def main():
         logger.info("配置加载成功")
 
         # 从配置和环境变量获取OpenAI设置
-        openai_api_key = os.environ.get("OPENAI_API_KEY") or config["openai"].get("api_key", "")
-        openai_base_url = os.environ.get("OPENAI_API_BASE") or config["openai"].get("base_url", "")
-        openai_model = os.environ.get("OPENAI_API_MODEL") or config["openai"].get("model", "")
+        api_key = os.environ.get("OPENAI_API_KEY") or config["openai"].get("api_key", "")
+        base_url = os.environ.get("OPENAI_API_BASE") or config["openai"].get("base_url", "")
+        email_model = os.environ.get("OPENAI_API_MODEL") or config["openai"].get("email_model", "")
+        date_model = os.environ.get("OPENAI_API_MODEL") or config["openai"].get("date_model", "")
 
-        # 初始化数据目录
-        data_dir = "data"
-        if not os.path.exists(data_dir):
-            os.makedirs(data_dir)
+        if not all([api_key, base_url, email_model, date_model]):
+            logger.error("缺少必要设置，请检查配置文件或环境变量。")
+            return
 
-        # 如果请求使用示例数据
-        current_year = datetime.now().year
-        if args.use_sample:
-            # 检查示例文件是否存在
-            sample_jieqi = f"jieqi_{current_year}.json"
-            sample_holiday = f"holiday_{current_year}.json"
-
-            if os.path.exists(sample_jieqi) and os.path.exists(sample_holiday):
-                # 将示例文件复制到数据目录
-                target_jieqi = os.path.join(data_dir, f"jieqi_{current_year}.json")
-                target_holiday = os.path.join(data_dir, f"holiday_{current_year}.json")
-
-                shutil.copy2(sample_jieqi, target_jieqi)
-                shutil.copy2(sample_holiday, target_holiday)
-
-                logger.info("使用示例数据文件")
-            else:
-                logger.warning("未找到示例文件，将使用API数据")
+        # 请求节假日数据
+        date_fetch_main(base_url=base_url, api_key=api_key,
+                        model=date_model)
 
         # 初始化组件
-        data_fetcher = DataFetcher(data_dir)
-        content_generator = ContentGenerator(api_key=openai_api_key, base_url=openai_base_url, model=openai_model)
-        schedule_manager = ScheduleManager(data_dir, data_fetcher)
-        
-        # 检查是否需要生成或更新月度日程表
-        current_month = datetime.now().strftime("%Y-%m")
-        monthly_schedule = None if args.regenerate_schedule else schedule_manager.load_monthly_schedule()
-        
-        if monthly_schedule is None:
-            logger.info(f"生成{current_month}月度邮件发送日程表")
-            monthly_schedule = schedule_manager.generate_monthly_schedule()
-            schedule_manager.save_monthly_schedule(monthly_schedule)
-            logger.info(f"月度日程表已保存，共{len(monthly_schedule)}个发送日期")
-            
-            # 输出本月的发送日程
-            for send_date, events in monthly_schedule.items():
-                for event in events:
-                    original_date = event.get("original_date")
-                    event_type = event.get("type")
-                    event_name = event.get("info", {}).get("name")
-                    logger.info(f"计划在 {send_date} 发送 {original_date} 的{event_type}: {event_name}")
+        content_generator = ContentGenerator(api_key=api_key, base_url=base_url, model=email_model)
         
         # 检查今天是否应该发送邮件
-        should_send, special_date_type, special_date_info = schedule_manager.should_send_email_today()
+        if os.path.exists('date.json'):
+            with open('date.json') as f:
+                email_schedule = json.load(f)
+                if email_schedule[0]:
+                    date_info = email_schedule[0]
+                else:
+                    logger.info("7天内没有找到节日，无需发送...")
+                    return
+        else:
+            logger.info("没有找到邮件发送日程表，无需发送...")
+            return
+
+        should_send = should_send_email_today(date_info)
 
         if should_send or args.force:
             # 如果强制发送但今天不是特殊日期，则查找最近的特殊日期
-            if not special_date_type and args.force:
+            if args.force:
                 logger.info("强制发送模式：查找最近的特殊日期")
-                # 获取最近的特殊日期
-                special_date_type, special_date_info = schedule_manager.get_nearest_special_date()
-                if not special_date_type:
-                    logger.error("无法找到最近的特殊日期，无法发送邮件")
-                    return
-                logger.info(f"找到最近的{special_date_type}：{special_date_info.get('name')}")
 
-            
-            # 获取原始日期和节日名称
-            today = datetime.now().strftime("%Y-%m-%d")
-            special_date_entry = monthly_schedule[today][0] if today in monthly_schedule else None
-            original_date = special_date_entry.get("original_date") if special_date_entry else today
-            event_name = special_date_info.get("name", "")
-            
-            if original_date == today:
-                logger.info(f"今天是{special_date_type}：{event_name}")
-            else:
-                logger.info(f"今天将提前发送{original_date}的{special_date_type}：{event_name}的邮件")
+            logger.info(f"今天将提前发送{date_info['holiday_name']}的邮件")
 
             # 生成邮件内容
-            email_content = content_generator.generate_email_content(special_date_type, special_date_info)
+            email_content = content_generator.generate_email_content(date_info['holiday_name'])
             logger.info(f"邮件内容已生成：{email_content['subject']}")
 
             if not args.test:

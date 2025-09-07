@@ -28,4 +28,6 @@ posters/
 
 # Test data
 test_data/
-test.py
+agno_test.py
+
+.env

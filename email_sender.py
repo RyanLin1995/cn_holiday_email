@@ -4,8 +4,17 @@ from email.mime.text import MIMEText
 from email.utils import formataddr
 import logging
 
+
 class EmailSender:
-    def __init__(self, smtp_server, smtp_port, username, password, sender_name="AI节日邮件", ssl=True):
+    def __init__(
+        self,
+        smtp_server,
+        smtp_port,
+        username,
+        password,
+        sender_name="AI节日邮件",
+        ssl=True,
+    ):
         """初始化邮件发送器，设置SMTP服务器详细信息。
 
         参数:
@@ -26,11 +35,8 @@ class EmailSender:
         # 设置日志记录
         logging.basicConfig(
             level=logging.INFO,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            handlers=[
-                logging.FileHandler("email_sender.log"),
-                logging.StreamHandler()
-            ]
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            handlers=[logging.StreamHandler()],
         )
         self.logger = logging.getLogger("EmailSender")
 
@@ -46,22 +52,23 @@ class EmailSender:
             bool: 发送成功返回True，否则返回False
         """
         msg = MIMEMultipart()
-        msg['From'] = formataddr((self.sender_name, self.username))
-        msg['Subject'] = subject
+        msg["From"] = formataddr((self.sender_name, self.username))
+        msg["Subject"] = subject
 
         # 添加HTML正文
         # 预处理需要替换的内容，包括markdown格式转换
         # 处理markdown格式：加粗、斜体、列表等
-        body_html = body.replace('\n', '<br>')
+        body_html = body.replace("\n", "<br>")
         # 处理加粗文本 **text** -> <strong>text</strong>
         import re
-        body_html = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', body_html)
+
+        body_html = re.sub(r"\*\*(.*?)\*\*", r"<strong>\1</strong>", body_html)
         # 处理斜体文本 *text* -> <em>text</em>
-        body_html = re.sub(r'\*(.*?)\*', r'<em>\1</em>', body_html)
+        body_html = re.sub(r"\*(.*?)\*", r"<em>\1</em>", body_html)
         # 处理无序列表项 - item -> <li>item</li>
-        body_html = re.sub(r'<br>- (.*?)<br>', r'<br><li>\1</li><br>', body_html)
+        body_html = re.sub(r"<br>- (.*?)<br>", r"<br><li>\1</li><br>", body_html)
         # 处理有序列表项 1. item -> <li>item</li>
-        body_html = re.sub(r'<br>\d+\. (.*?)<br>', r'<br><li>\1</li><br>', body_html)
+        body_html = re.sub(r"<br>\d+\. (.*?)<br>", r"<br><li>\1</li><br>", body_html)
 
         html_body = f"""
         <html>
@@ -84,7 +91,7 @@ class EmailSender:
         </body>
         </html>
         """
-        msg.attach(MIMEText(html_body, 'html'))
+        msg.attach(MIMEText(html_body, "html"))
 
         # 连接SMTP服务器并发送邮件
         self.logger.info(f"正在连接SMTP服务器 {self.smtp_server}:{self.smtp_port}...")
@@ -97,21 +104,21 @@ class EmailSender:
                 server = smtplib.SMTP(self.smtp_server, self.smtp_port)
                 server.starttls()  # 启用TLS加密
                 self.logger.info("使用TLS连接SMTP服务器成功，正在进行身份验证...")
-            
+
             # 登录
             server.login(self.username, self.password)
             self.logger.info("身份验证成功，开始发送邮件...")
-            
+
             # 发送邮件给所有收件人
             for recipient in recipients:
-                msg['To'] = recipient
+                msg["To"] = recipient
                 try:
                     server.sendmail(self.username, recipient, msg.as_string())
                     self.logger.info(f"邮件已成功发送至 {recipient}")
                 except smtplib.SMTPException as se:
                     self.logger.error(f"发送邮件至 {recipient} 时出错：{str(se)}")
                     raise
-            
+
             # 关闭连接
             server.quit()
             self.logger.info("所有邮件发送完成")
@@ -119,11 +126,15 @@ class EmailSender:
 
         except smtplib.SMTPConnectError as ce:
             self.logger.error(f"连接SMTP服务器失败：{str(ce)}")
-            self.logger.info("请检查：1. SMTP服务器地址和端口是否正确 2. 网络连接是否正常 3. 防火墙设置是否允许连接")
+            self.logger.info(
+                "请检查：1. SMTP服务器地址和端口是否正确 2. 网络连接是否正常 3. 防火墙设置是否允许连接"
+            )
             return False
         except smtplib.SMTPAuthenticationError as ae:
             self.logger.error(f"SMTP身份验证失败：{str(ae)}")
-            self.logger.info("请检查：1. 用户名是否正确 2. 密码是否正确（如果使用的是邮箱的授权码，请确保授权码有效）")
+            self.logger.info(
+                "请检查：1. 用户名是否正确 2. 密码是否正确（如果使用的是邮箱的授权码，请确保授权码有效）"
+            )
             return False
         except smtplib.SMTPException as e:
             self.logger.error(f"SMTP操作失败：{str(e)}")

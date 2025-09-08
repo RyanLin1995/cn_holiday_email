@@ -1,6 +1,7 @@
 from agno.agent import Agent
 from agno.models.openai import OpenAILike
 
+
 class ContentGenerator:
     def __init__(self, api_key=None, base_url=None, model=None):
         """初始化ContentGenerator，设置OpenAI参数。
@@ -11,8 +12,8 @@ class ContentGenerator:
             model (str, 可选): 要使用的OpenAI模型。默认从环境变量获取或使用'gpt-3.5-turbo'。
         """
         # 优先使用环境变量中的设置
-        model = OpenAILike(base_url=base_url, api_key=api_key, id=model)
-        self.client = Agent(name="Master Email Writer", model=model)
+        agent_model = OpenAILike(base_url=base_url, api_key=api_key, id=model)
+        self.client = Agent(name="Master Email Writer", model=agent_model)
 
     def generate_email_content(self, holiday_name):
         """根据特殊日期生成邮件内容。
@@ -51,7 +52,7 @@ class ContentGenerator:
         - 结构：中文内容在前，英文在后，中间用分隔线（如“------”）区分。  
         - 语气：亲切如同事交谈，避免刻板（如用“我们”而非“本人”）。  
         - 敏感提示：若节日含宗教背景（如圣诞节），祝福需包容多元文化（如用“节日快乐”而非“圣诞快乐”）。  
-        - 输出：标题跟内容都以字符串形式输出，中文内容跟英文内容都不要有任何的注解，也不要带有任何的格式符号。英文输出不要只是中文输出的翻译。
+        - 输出：标题跟内容都以字符串形式输出，中文内容跟英文内容都不要有任何的注解，也不要带有任何的格式符号。英文输出不要只是中文输出的翻译。中文要求是简体中文。
 
         **输出示例：**  
         标题：新春祝福 | Warm Wishes for the Lunar New Year
@@ -68,14 +69,16 @@ class ContentGenerator:
         content = response.content
 
         # 解析响应以提取主题和正文
-        lines = content.strip().split('\n')
+        lines = content.strip().split("\n")
         subject = ""
         body = ""
 
         for i, line in enumerate(lines):
             if "主题" in line or "标题" in line:
-                subject = line.split("：", 1)[1].strip() if "：" in line else line.strip()
-                body = "\n".join(lines[i+1:]).strip()
+                subject = (
+                    line.split("：", 1)[1].strip() if "：" in line else line.strip()
+                )
+                body = "\n".join(lines[i + 1 :]).strip()
                 break
 
         if not subject:
@@ -83,9 +86,4 @@ class ContentGenerator:
             subject = lines[0].strip()
             body = "\n".join(lines[1:]).strip()
 
-        return {
-            "subject": subject,
-            "body": body
-        }
-
-
+        return {"subject": subject, "body": body}
